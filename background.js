@@ -1,77 +1,45 @@
 // All of the tracked tabs.
 let tabs = new Map();
 
-// The last name that was downloaded.
-let lastName;
-
-// The default name format.
-let nameFormat = '{title}';
-
-// Try to get the stored format, if one exists.
-chrome.storage.local.get('format', (result) => {
-  if (result.format) {
-    nameFormat = result.format;
-  }
-});
-
-// And also listen to further changes.
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.format) {
-    nameFormat = changes.format.newValue;
-
-    // Default the format if it's empty.
-    if (nameFormat === '') {
-      nameFormat = '{title}';
-    }
-
-    // If there is a song currently playing, redownload it.
-    if (lastName) {
-      download(lastName, true);
-    }
-  }
-});
-
 // Gets the url to a blob containing the given string.
 function stringToUrl(s) {
   return URL.createObjectURL(new Blob([s], {type: "text/plain"}));
 }
 
-// Given a name, if it's different than the last name, download it.
-function download(name, redownload) {
-  if (name !== lastName || redownload) {
-    lastName = name;
+function send_tab_data(tab) {
+	if (!tab.audible) {
+		// Paused
+		console.log('Audible tab paused/closed = nothing is playing');
+	}
+	else {
+	    console.log('Audible tab played:\n\ttitle: ' +  tab.name + "\n\tURL: " + tab.url);
+	}
 
-    // Interpolate the format.
-    let formatted = nameFormat.replace(/\{title\}/g, name);
-
-    // Download the name.
-    chrome.downloads.download({url: stringToUrl(formatted), filename: 'currentsong.txt', conflictAction: 'overwrite'}, (downloadId) => {
-      // Erase the download record, to not spam the user's downloads list.
-      chrome.downloads.erase({id: downloadId});
-    });
-  }
+   var http = new XMLHttpRequest();
+   http.open("POST", "http://localhost:6767/update_widget");
+   http.responseType = 'text';
+   http.setRequestHeader("Content-type", "application/json");
+   http.send(JSON.stringify({ "title": tab.name, "audible": tab.audible, "url": tab.url }));
+   console.log('Tab data sent');
 }
 
 // Get the first tracked tab that has a known name and is audible, and download its name.
 function update() {
   for (let tab of tabs.values()) {
     if (tab.name !== '' && tab.audible) {
-      download(tab.name);
+      send_tab_data(tab);
       return;
     }
   }
 
-  download('');
+  // paused tab (not audible)
+  send_tab_data({name: '', audible: false, url: ''});
 }
 
 // Map from urls to the file that handles them.
 function getScript(url) {
   if (url.startsWith('https://www.youtube.com/watch')) {
     return 'youtube.js';
-  } else if (url.startsWith('https://nightbot.tv/song_requests')) {
-    return 'nightbot.js';
-  } else if (url.startsWith('https://music.youtube.com/')) {
-    return 'youtubemusic.js';
   }
 }
 
@@ -85,8 +53,7 @@ function add(id, url, audible) {
   let script = getScript(url);
 
   if (script && !tabs.has(id)) {
-    tabs.set(id, {name: '', audible: audible || false});
-
+    tabs.set(id, {name: '', audible: audible || false, url: url});
     chrome.tabs.executeScript(id, {file: script, runAt: "document_end"});
 
     update();
@@ -104,6 +71,16 @@ function remove(id) {
   }
 }
 
+// Set the url of a tracked tab.
+function setUrl(id, url) {
+  let tab = tabs.get(id);
+
+  if (tab) {
+    tab.url = url;
+
+    update();
+  }
+}
 
 // Set the name of a tracked tab.
 function setName(id, name) {
@@ -137,9 +114,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url !== undefined) {
     // If a tracked tab changed the url to something that is not tracked, stop tracking it.
     if (tabs.has(tabId)) {
-      if (!isUrlSupported(changeInfo.url)) {
-        remove(tabId);
-      }
+		// Update tab url
+		setUrl(tabId, tab.url);
+		if (!isUrlSupported(changeInfo.url)) {
+        	remove(tabId);
+        }
     } else {
       add(tabId, tab.url);
     }

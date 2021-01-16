@@ -1,0 +1,119 @@
+<html>
+<head>
+<style>
+
+	#thumbnail {
+		width: 20%;
+  		height: auto;
+		left: 0;
+	}
+
+	.nowplayingcard {
+		width: 100%;
+		height 400px;
+	}
+
+	.nowplayingcontainer-inner {
+		display: flex;
+		width: 30%;
+		height: 60px;
+		padding: 8px;
+		background-color: #232327;
+	}
+
+	.trackInfo {
+		width: 100px
+		flex: 1;
+		padding-top: 10px;
+		padding-left: 8px;
+		left: 0;
+		color: #27afc6;
+
+		  text-overflow: ellipsis;
+
+		  /* Required for text-overflow to do anything */
+		  white-space: nowrap;
+		  overflow: hidden;
+	}
+
+	#nowplaying {
+		font-size: 12px;
+		color: white;
+	}
+
+    body {
+
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        background-color: rgba(0, 0, 0, 0);
+
+		padding: 0;
+		margin: 0;
+	}
+
+</style>
+</head>
+<body>
+
+	<div id="fullwidget" class="nowplayingcard" style="display:none;">
+		<div class="nowplayingcontainer-inner">
+		
+
+			<img id="thumbnail" src="#">
+
+			<!--<img id="thumbnail" src="#">-->
+			<div class="trackInfo">
+				<a id="nowplaying">▶ NOW PLAYING</a>
+				</br>
+				<a id="tracktitle"></a>
+			</div>
+		</div>
+	</div>
+
+</body>
+</html>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+<script type="text/javascript" src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script> 
+<script>
+	// Request status of widget every X milliseconds
+	const REFRESH_RATE = 5 * 1000;
+	// If set to 0 the will only hide if video has stopped playing
+	// Otherwise, it will hide after given delay X in milliseconds
+	const HIDE_AFTER = 15 * 1000;
+
+
+	var lastShown = ''; 
+	function update_widget(widget) {
+		var fwidget = document.getElementById("fullwidget");
+
+		if (widget.title != '' && (lastShown != widget.title) ) {
+			lastShown = widget.title;
+
+			document.getElementById("tracktitle").innerHTML = widget.title;
+			document.getElementById("thumbnail").src = widget.thumbnail;
+			$( "#fullwidget" ).fadeIn('slow');
+
+			if (HIDE_AFTER != 0) {
+				$( "#fullwidget" ).delay(HIDE_AFTER).fadeOut('slow');
+			}
+
+		} else {
+			$( "#fullwidget" ).fadeOut('slow');
+		}
+	}
+
+	function get_live_widget_status() {
+	    fetch("http://localhost:6767/live_widget_status")
+		.then(response => response.json())
+		.then(data => update_widget(data));
+	}
+
+
+	get_live_widget_status();
+	setInterval(get_live_widget_status, REFRESH_RATE);
+
+
+</script>
+
+
