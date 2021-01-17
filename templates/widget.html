@@ -51,6 +51,24 @@
 		margin: 0;
 	}
 
+	p {
+		margin-top: -1px;
+		position: relative;
+    	white-space: nowrap;
+		animation: floatText 5s infinite alternate ease-in-out;
+	}
+
+	@-webkit-keyframes floatText{
+		from {
+			right: 100%;
+		}
+
+		to {
+			/* left: auto; */
+			right: 0%;
+		}
+	}
+
 </style>
 </head>
 <body>
@@ -64,8 +82,7 @@
 			<!--<img id="thumbnail" src="#">-->
 			<div class="trackInfo">
 				<a id="nowplaying">▶ NOW PLAYING</a>
-				</br>
-				<a id="tracktitle"></a>
+				<p id="tracktitle"></p>
 			</div>
 		</div>
 	</div>
